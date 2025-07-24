@@ -6,9 +6,9 @@ from sqlalchemy import Column, String, Float, ForeignKey, TIMESTAMP, select
 from starlette.status import HTTP_401_UNAUTHORIZED
 from datetime import datetime
 
-# Hardcoded config for demo
-DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost/demo_db"
-API_KEY = "mysecretkey"
+# Use environment variables if set, otherwise fallback to local defaults
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost/demo_db")
+API_KEY = os.environ.get("API_KEY", "mysecretkey")
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
