@@ -77,12 +77,9 @@ async def startup():
 @app.post("/customers/", dependencies=[Depends(verify_api_key)])
 async def create_customer(id: str, name: str, email: str, phone: str, join_date: str, db: AsyncSession = Depends(get_db)):
     try:
-        if 'T' in join_date:
-            join_date_obj = datetime.fromisoformat(join_date)
-        else:
-            join_date_obj = datetime.strptime(join_date, "%Y-%m-%d")
+        join_date_obj = datetime.strptime(join_date, "%Y-%m-%d")
     except Exception:
-        raise HTTPException(status_code=400, detail="join_date must be in YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS format")
+        raise HTTPException(status_code=400, detail="join_date must be in YYYY-MM-DD format")
     customer = Customer(id=id, name=name, email=email, phone=phone, join_date=join_date_obj)
     db.add(customer)
     await db.commit()
@@ -114,7 +111,11 @@ async def delete_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
 
 @app.post("/cards/", dependencies=[Depends(verify_api_key)])
 async def create_card(id: str, type: str, status: str, balance: float, issue_date: str, customer_id: str, db: AsyncSession = Depends(get_db)):
-    card = Card(id=id, type=type, status=status, balance=balance, issue_date=issue_date, customer_id=customer_id)
+    try:
+        issue_date_obj = datetime.strptime(issue_date, "%Y-%m-%d")
+    except Exception:
+        raise HTTPException(status_code=400, detail="issue_date must be in YYYY-MM-DD format")
+    card = Card(id=id, type=type, status=status, balance=balance, issue_date=issue_date_obj, customer_id=customer_id)
     db.add(card)
     await db.commit()
     await db.refresh(card)
@@ -145,7 +146,11 @@ async def delete_card(card_id: str, db: AsyncSession = Depends(get_db)):
 
 @app.post("/cases/", dependencies=[Depends(verify_api_key)])
 async def create_case(id: str, customer_id: str, type: str, status: str, priority: str, assigned_to: str, created_at: str, db: AsyncSession = Depends(get_db)):
-    case = Case(id=id, customer_id=customer_id, type=type, status=status, priority=priority, assigned_to=assigned_to, created_at=created_at)
+    try:
+        created_at_obj = datetime.strptime(created_at, "%Y-%m-%d")
+    except Exception:
+        raise HTTPException(status_code=400, detail="created_at must be in YYYY-MM-DD format")
+    case = Case(id=id, customer_id=customer_id, type=type, status=status, priority=priority, assigned_to=assigned_to, created_at=created_at_obj)
     db.add(case)
     await db.commit()
     await db.refresh(case)
@@ -176,7 +181,11 @@ async def delete_case(case_id: str, db: AsyncSession = Depends(get_db)):
 
 @app.post("/trips/", dependencies=[Depends(verify_api_key)])
 async def create_trip(id: str, card_id: str, station: str, type: str, amount: float, status: str, timestamp: str, db: AsyncSession = Depends(get_db)):
-    trip = Trip(id=id, card_id=card_id, station=station, type=type, amount=amount, status=status, timestamp=timestamp)
+    try:
+        timestamp_obj = datetime.strptime(timestamp, "%Y-%m-%d")
+    except Exception:
+        raise HTTPException(status_code=400, detail="timestamp must be in YYYY-MM-DD format")
+    trip = Trip(id=id, card_id=card_id, station=station, type=type, amount=amount, status=status, timestamp=timestamp_obj)
     db.add(trip)
     await db.commit()
     await db.refresh(trip)
