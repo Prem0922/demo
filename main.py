@@ -5,8 +5,8 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, String, Float, ForeignKey, TIMESTAMP, select
 from starlette.status import HTTP_401_UNAUTHORIZED
 from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
 
-# Use environment variables if set, otherwise fallback to local defaults
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost/demo_db")
 API_KEY = os.environ.get("API_KEY", "mysecretkey")
 
@@ -16,7 +16,15 @@ Base = declarative_base()
 
 app = FastAPI()
 
-# Models for CRM tables
+# Add CORS middleware to allow frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "https://your-frontend-domain.com", "*"],  # Add your frontend URL(s) here
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 class Customer(Base):
     __tablename__ = "customers"
     id = Column(String, primary_key=True)
@@ -54,12 +62,10 @@ class Trip(Base):
     status = Column(String)
     timestamp = Column(TIMESTAMP)
 
-# Dependency for DB session
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
 
-# API key auth
 async def verify_api_key(x_api_key: str = Header(...)):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid API Key")
@@ -68,11 +74,8 @@ async def verify_api_key(x_api_key: str = Header(...)):
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-# --- Customers ---
 @app.post("/customers/", dependencies=[Depends(verify_api_key)])
 async def create_customer(id: str, name: str, email: str, phone: str, join_date: str, db: AsyncSession = Depends(get_db)):
-    # Parse join_date string to datetime
     try:
         if 'T' in join_date:
             join_date_obj = datetime.fromisoformat(join_date)
@@ -109,7 +112,6 @@ async def delete_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"ok": True}
 
-# --- Cards ---
 @app.post("/cards/", dependencies=[Depends(verify_api_key)])
 async def create_card(id: str, type: str, status: str, balance: float, issue_date: str, customer_id: str, db: AsyncSession = Depends(get_db)):
     card = Card(id=id, type=type, status=status, balance=balance, issue_date=issue_date, customer_id=customer_id)
@@ -141,7 +143,6 @@ async def delete_card(card_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"ok": True}
 
-# --- Cases ---
 @app.post("/cases/", dependencies=[Depends(verify_api_key)])
 async def create_case(id: str, customer_id: str, type: str, status: str, priority: str, assigned_to: str, created_at: str, db: AsyncSession = Depends(get_db)):
     case = Case(id=id, customer_id=customer_id, type=type, status=status, priority=priority, assigned_to=assigned_to, created_at=created_at)
@@ -173,7 +174,6 @@ async def delete_case(case_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"ok": True}
 
-# --- Trips ---
 @app.post("/trips/", dependencies=[Depends(verify_api_key)])
 async def create_trip(id: str, card_id: str, station: str, type: str, amount: float, status: str, timestamp: str, db: AsyncSession = Depends(get_db)):
     trip = Trip(id=id, card_id=card_id, station=station, type=type, amount=amount, status=status, timestamp=timestamp)
